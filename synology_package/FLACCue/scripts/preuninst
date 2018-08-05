@@ -1,0 +1,7 @@
+#!/bin/sh
+
+### This script will be executed when package uninstalled and upgraded.
+### Actions before package uninstalled
+### ex. backup package data.
+
+exit 0

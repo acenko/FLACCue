@@ -1,0 +1,10 @@
+#!/bin/sh
+
+### This script will be executed when package uninstalled and upgraded.
+### Actions after package uninstalled.
+### ex. remove garbage files.
+
+rm -f /usr/bin/FLACCue
+rmdir /flaccue
+
+exit 0

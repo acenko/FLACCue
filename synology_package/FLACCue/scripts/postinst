@@ -1,0 +1,12 @@
+#!/bin/sh
+
+### This script will be executed when package installed and upgraded.
+### Actions after package installed.
+### ex. create database, create symbolic link...
+
+mkdir /flaccue
+chown plex:users /flaccue
+chmod a+rwX /flaccue
+ln -sf $SYNOPKG_PKGDEST/usr/bin/FLACCue /usr/bin/
+
+exit 0

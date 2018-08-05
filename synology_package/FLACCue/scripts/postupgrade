@@ -1,0 +1,7 @@
+#!/bin/sh
+
+### This script will be executed ONLY at package upgraded.
+### Actions after package upgraded.
+### ex. restore user settings.
+
+exit 0

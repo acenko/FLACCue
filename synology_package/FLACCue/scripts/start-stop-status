@@ -1,0 +1,30 @@
+#!/bin/sh
+
+case $1 in
+	start)
+		### Start this package.
+		### Requests to /flaccue are mirrored to /
+		sudo --user=plex nohup FLACCue / /flaccue/ &
+		exit 0
+	;;
+	stop)
+		### Stop this package.
+		kill `ps -u plex -ef | grep flaccue | grep -v grep | awk '{print $2}'`
+		exit 0
+	;;
+	status)
+		### Check package alive.
+		### Check that we have passthrough for /flaccue.
+		if [ -h "/flaccue/sys" ]; then
+			exit 0
+		else
+			exit 3
+		fi
+	;;
+	killall)
+        ;;
+	log)
+		exit 0
+	;;
+esac
+

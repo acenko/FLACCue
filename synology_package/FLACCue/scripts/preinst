@@ -1,0 +1,7 @@
+#!/bin/sh
+
+### This script will be execute when package installed and upgraded.
+### Actions before package installed.
+### ex. check environment.
+
+exit 0
