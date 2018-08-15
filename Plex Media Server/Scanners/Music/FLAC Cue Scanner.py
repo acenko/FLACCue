@@ -48,11 +48,14 @@ def Scan(path, files, mediaList, subdirs, language=None, root=None):
 
             # Get the name of the FLAC file without the extension.
             # Split it for white space.
-            flac_details = os.path.splitext(file)[-2].split()
-            # Check for disc numbering.
-            if(flac_details[-2] == 'Disc'):
-               disc = int(flac_details[-1])
-            else:
+            try:
+               flac_details = os.path.splitext(file)[-2].split()
+               # Check for disc numbering.
+               if(flac_details[-2] == 'Disc'):
+                  disc = int(flac_details[-1])
+               else:
+                  disc = 1
+            except IndexError:
                disc = 1
 
             try:
@@ -66,8 +69,14 @@ def Scan(path, files, mediaList, subdirs, language=None, root=None):
                # Make this track -1.
                flac_info['tracknumber'] = ['{0:02d}'.format(track)]
                # Call this "Album Name - Full Album" in the track listing
-               flac_info['title'] = ['{0} - Full album'.format(flac_info['album'][0])]
                # Ensure the info is added cleanly.
+               if('artist' not in flac_info or flac_info['artist'][0] == ''):
+                  flac_info['artist'] = [info['PERFORMER']]
+               if('album' not in flac_info or flac_info['album'][0] == ''):
+                  flac_info['album'] = [info['TITLE']]
+               if('albumartist' not in flac_info or flac_info['albumartist'][0] == ''):
+                  flac_info['albumartist'] = [info['PERFORMER']]
+               flac_info['title'] = ['{0} - Full album'.format(flac_info['album'][0])]
                artist = AudioFiles.cleanPass(flac_info['artist'][0])
                album = AudioFiles.cleanPass(flac_info['album'][0])
                title = AudioFiles.cleanPass(flac_info['title'][0])
@@ -79,7 +88,6 @@ def Scan(path, files, mediaList, subdirs, language=None, root=None):
                # Use the FLAC file for playback.
                track_object.parts.append(full_file)
                log(track_object)
-               log('')
                # Add the track object to the output list.
                mediaList.append(track_object)
                
@@ -89,14 +97,7 @@ def Scan(path, files, mediaList, subdirs, language=None, root=None):
                end_time = '00:00:00'
                # Handle each track.
                for track in track_info:
-                  # Get a copy of the shared info.
-                  flac_info = mutagen.flac.FLAC(full_file)
-                  # Add the disc number.
-                  flac_info['discnumber'] = ['{0:0d}'.format(disc)]
-                  # Add the track number.
-                  flac_info['tracknumber'] = ['{0:02d}'.format(track)]
-                  # Add the track title.
-                  flac_info['title'] = [track_info[track]['TITLE']]
+                  title = AudioFiles.cleanPass(track_info[track]['TITLE'])
                   try:
                      # Get the start time of the track.
                      start_time = track_info[track]['INDEX'][1]
@@ -116,11 +117,6 @@ def Scan(path, files, mediaList, subdirs, language=None, root=None):
                      # 75 frames per second.
                      frames = int(round(75 * (file_end % 1)))
                      end_time = '{0:02d}:{1:02d}:{2:02d}'.format(minutes, seconds, frames)
-                  # Ensure the info is added cleanly.
-                  artist = AudioFiles.cleanPass(flac_info['artist'][0])
-                  album = AudioFiles.cleanPass(flac_info['album'][0])
-                  title = AudioFiles.cleanPass(flac_info['title'][0])
-                  album_artist = AudioFiles.cleanPass(flac_info['albumartist'][0])
                   # Create the track object.
                   track_object = Media.Track(artist, album, title, track,
                                              disc=disc, album_artist=album_artist,
@@ -131,9 +127,9 @@ def Scan(path, files, mediaList, subdirs, language=None, root=None):
                   # /flaccue/Music/Artist/Album/Artist - Album Disc 1.flac.10:25:17.12:55:20
                   track_object.parts.append('/flaccue'+full_file+'.{0}.{1}'.format(start_time, end_time))
                   log(track_object)
-                  log('')
                   # Add the track to the returned object list.
                   mediaList.append(track_object)
+               log('')
                # Remove the FLAC file from the list to parse.
                files.remove(full_file)
             except:
@@ -206,28 +202,28 @@ def read_cue(file):
                         # The rest of the line should be the time information.
                         key, value = line.split(None, 1)
                         # Store the time information for this index.
-                        track_details['INDEX'][int(key)] = value.replace('"', '')
+                        track_details['INDEX'][int(key)] = value.strip().replace('"', '')
                         i += 1
                      else:
                         # Store all the other entries as text. Use the first
                         # word as the access key.
                         key, value = line.split(None, 1)
                         # Also remove quotes from track names and similar.
-                        track_details[key] = value.replace('"', '')
+                        track_details[key] = value.strip().replace('"', '')
                         i += 1
                else:
                   # Store all the other entries as text. Use the first
                   # word as the access key.
                   key, value = lines[i].split(None, 1)
                   # Also remove quotes from track names and similar.
-                  file_details[key] = value.replace('"', '')
+                  file_details[key] = value.strip().replace('"', '')
                   i += 1
          else:
             # Store all the other entries as text. Use the first
             # word as the access key.
             key, value = lines[i].split(None, 1)
             # Also remove quotes from track names and similar.
-            cue[key] = value.replace('"', '')
+            cue[key] = value.strip().replace('"', '')
             i += 1
    except IndexError:
       # We're done.
