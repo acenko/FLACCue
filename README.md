@@ -41,7 +41,9 @@ directory and run this command from the "toolkit/" directory:
 sudo pkgscripts/PkgCreate.py -S -c FLACCue
 
 Note that the python script is called "FLACCue" in this package instead of
-flaccue.py. The files are the same other than the name.
+flaccue.py. The files are the same other than the name. I also installed
+FFMPEG and Python3 through the Package Center--they are needed for the code
+to run.
 
 I've also included an unsigned spk file you can install directly at your own
 risk in the synology_package directory.
