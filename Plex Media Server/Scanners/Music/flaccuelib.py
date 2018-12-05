@@ -47,6 +47,8 @@ def FLACCueParse(path, files, mediaList, subdirs, language=None, root=None):
          for file in cuefiles:
             # Get the full file path.
             full_file = os.path.join(folder, file)
+            if(not os.path.exists(full_file)):
+               continue
 
             # My cue files include "Disc 1", "Disc 2", and similar as the
             # final part of the title for multi-disk sets. Something like:
