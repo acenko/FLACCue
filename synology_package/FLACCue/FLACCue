@@ -33,34 +33,57 @@ class FLACCue(LoggingMixIn, Operations):
 
    def clean_path(self, path):
       # Get a file path for the FLAC file from a FLACCue path.
-      # Note that .flac files accessed through FLACCue will
+      # Note that files accessed through FLACCue will
       # still read normally--we just need to trim off the song
       # times.
-      if('.flac.' in path):
-         splits = path.split('.flac.')
-         path = splits[0] + '.flac'
+      if('.flaccuesplit.' in path):
+         splits = path.split('.flaccuesplit.')
+         times, extension = os.path.splitext(splits[1])
+         try:
+            # The extension should not parse as an int nor split into ints
+            # separated by :. If it does, we have no extension.
+            int(extension.split(':')[0])
+            extension = ''
+         except ValueError:
+            pass
+         path = splits[0] + extension
       return path
-      
+
    def getattr(self, path, fh=None):
       # If it's one of the FLACCue paths, we need to adjust the file size to be
       # appropriate for the shortened data.
-      if('.flac.' in path):
+      if('.flaccuesplit.' in path):
          try:
-            splits = path.split('.flac.')
-            path = splits[0] + '.flac'
+            splits = path.split('.flaccuesplit.')
+            times, extension = os.path.splitext(splits[1])
+            try:
+               # The extension should not parse as an int nor split into ints
+               # separated by :. If it does, we have no extension.
+               int(extension.split(':')[0])
+               extension = ''
+            except ValueError:
+               pass
+            path = splits[0] + extension
             # Get the info for the base file.
             st = os.lstat(path)
             toreturn = dict((key, getattr(st, key)) for key in (
                             'st_atime', 'st_ctime', 'st_gid', 'st_mode', 'st_mtime',
                             'st_nlink', 'st_size', 'st_uid'))
             # Estimate the file size.
-            start, end = splits[1].split('.')
+            start, end = times.split('.')
             # Minutes:Seconds:Frames
             # 75 frames per second.
             start_split = [int(x) for x in start.split(':')]
-            start_time = start_split[0]*60 + start_split[1] + start_split[2]/75
+            if(len(start_split) != 3):
+               start_time = 0
+            else:
+               start_time = start_split[0]*60 + start_split[1] + start_split[2]/75
             end_split = [int(x) for x in end.split(':')]
-            end_time = end_split[0]*60 + end_split[1] + end_split[2]/75
+            if(len(end_split) != 3):
+               # Treat an end of file indicator as a 1 minute past the start time.
+               end_time = start_time + 60
+            else:
+               end_time = end_split[0]*60 + end_split[1] + end_split[2]/75
             # 2 channel 16 bit [2 byte] 44.1kHz.
             toreturn['st_size'] = int((end_time - start_time)*2*2*44100)
             return toreturn
@@ -85,22 +108,36 @@ class FLACCue(LoggingMixIn, Operations):
          raise ValueError('Can only open files read-only.')
       raw_path = path
       # Handle the FLACCue files.
-      if('.flac.' in path):
-         splits = path.split('.flac.')
+      if('.flaccuesplit.' in path):
+         splits = path.split('.flaccuesplit.')
          # Get a path to the actual file name.
-         # Note that .flac files accessed through FLACCue will
+         # Note that files accessed through FLACCue will
          # still read normally--we just need to trim off the song
-         # times.
-         path = splits[0] + '.flac'
+         # times and fix the file extension.
+         times, extension = os.path.splitext(splits[1])
+         try:
+            # The extension should not parse as an int nor split into ints
+            # separated by :. If it does, we have no extension.
+            int(extension.split(':')[0])
+            extension = ''
+         except ValueError:
+            pass
+         path = splits[0] + extension
          # Now get the start and end times.
-         start, end = splits[1].split('.')
+         start, end = times.split('.')
          # Convert them from strings to floating point seconds.
          # Minutes:Seconds:Frames
          # 75 frames per second.
          start_split = [int(x) for x in start.split(':')]
-         start_time = start_split[0]*60 + start_split[1] + start_split[2]/75
+         if(len(start_split) != 3):
+            start_time = 0
+         else:
+            start_time = start_split[0]*60 + start_split[1] + start_split[2]/75
          end_split = [int(x) for x in end.split(':')]
-         end_time = end_split[0]*60 + end_split[1] + end_split[2]/75
+         if(len(end_split) != 3):
+            end_time = None
+         else:
+            end_time = end_split[0]*60 + end_split[1] + end_split[2]/75
          with self.rwlock:
             # Hold a file handle for the actual file.
             fd = os.open(path, flags, *args, **pargs)
