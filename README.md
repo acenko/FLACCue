@@ -3,8 +3,9 @@ FLAC with cuesheet support for Plex.
 
 The Plex Media Server directory includes the Scanner for parsing cue sheets
 for the FLAC files. It will create Plex albums for the cue sheets with the
-full album available as track -1 and also the split up tracks. The tracks
-give Plex filenames with "/flaccue/{FLAC file name}.{start_time}.{end_time}".
+full album available as disc 9999, track [Disc #] and also the split up tracks.
+The tracks give Plex filenames with
+"/flaccue/{file base}.flaccuesplit.{start_time}.{end_time}.{ext}".
 This causes each track to have a unique filename (seemingly necessary) and
 also provides the track timing information. The "/flaccue" portion indicates
 to the file system to access the FUSE filesystem for extracting the tracks.
