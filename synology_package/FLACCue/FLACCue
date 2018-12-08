@@ -9,6 +9,7 @@ import logging
 import os
 
 import ffmpeg
+import mutagen
 import numpy
 import time
 import threading
@@ -70,6 +71,7 @@ class FLACCue(LoggingMixIn, Operations):
                             'st_atime', 'st_ctime', 'st_gid', 'st_mode', 'st_mtime',
                             'st_nlink', 'st_size', 'st_uid'))
             # Estimate the file size.
+            f = mutagen.File(path)
             start, end = times.split('.')
             # Minutes:Seconds:Frames
             # 75 frames per second.
@@ -80,12 +82,13 @@ class FLACCue(LoggingMixIn, Operations):
                start_time = start_split[0]*60 + start_split[1] + start_split[2]/75
             end_split = [int(x) for x in end.split(':')]
             if(len(end_split) != 3):
-               # Treat an end of file indicator as a 1 minute past the start time.
-               end_time = start_time + 60
+               end_time = f.info.length
             else:
                end_time = end_split[0]*60 + end_split[1] + end_split[2]/75
-            # 2 channel 16 bit [2 byte] 44.1kHz.
-            toreturn['st_size'] = int((end_time - start_time)*2*2*44100)
+            toreturn['st_size'] = int((end_time - start_time) *
+                                      f.info.channels *
+                                      (f.info.bits_per_sample/8) *
+                                      f.info.sample_rate)
             return toreturn
          except:
             import traceback
@@ -135,7 +138,8 @@ class FLACCue(LoggingMixIn, Operations):
             start_time = start_split[0]*60 + start_split[1] + start_split[2]/75
          end_split = [int(x) for x in end.split(':')]
          if(len(end_split) != 3):
-            end_time = None
+            # Nothing longer than 10 hours.
+            end_time = 3600*10
          else:
             end_time = end_split[0]*60 + end_split[1] + end_split[2]/75
          with self.rwlock:
