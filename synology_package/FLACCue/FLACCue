@@ -147,14 +147,23 @@ class FLACCue(LoggingMixIn, Operations):
             fd = os.open(path, flags, *args, **pargs)
             # If we've already processed this file and still have it in memory.
             if(raw_path in self._open_subtracks):
-               # Update the stored info.
-               (positions, audio, count, last_access) = self._open_subtracks[raw_path]
-               count += 1
-               last_access = time.time()
-               positions[fd] = 0
-               self._open_subtracks[raw_path] = (positions, audio, count, last_access)
-               # Return the file handle.
-               return fd
+               if(self._open_subtracks[raw_path] is not None):
+                  # Update the stored info.
+                  (positions, audio, count, last_access) = self._open_subtracks[raw_path]
+                  count += 1
+                  last_access = time.time()
+                  positions[fd] = 0
+                  self._open_subtracks[raw_path] = (positions, audio, count, last_access)
+                  # Return the file handle.
+                  return fd
+               else:
+                  # We're still processing this track. Wait for it to finish.
+                  process = False
+            else:
+               # This is a new track to process.
+               process = True
+               self._open_subtracks[raw_path] = None
+         if(process):
             # Otherwise, we have to process the FLAC file to extract the track.
             # Open the file with FFMPEG.
             track = ffmpeg.input(path)
@@ -192,6 +201,28 @@ class FLACCue(LoggingMixIn, Operations):
             thread.start()
             # Return the file handle.
             return fd
+         else:
+            acquired = False
+            try:
+               while(True):
+                  self.rwlock.acquire()
+                  acquired = True
+                  if(self._open_subtracks[raw_path] is not None):
+                     break
+                  self.rwlock.release()
+                  acquired = False
+                  time.sleep(0.1)
+               # Update the stored info.
+               (positions, audio, count, last_access) = self._open_subtracks[raw_path]
+               count += 1
+               last_access = time.time()
+               positions[fd] = 0
+               self._open_subtracks[raw_path] = (positions, audio, count, last_access)
+               # Return the file handle.
+               return fd
+            finally:
+               if(acquired):
+                  self.rwlock.release()
       else:
          # With any other file, just pass it along normally.
          # This allows FLAC files to be read with a FLACCue path.

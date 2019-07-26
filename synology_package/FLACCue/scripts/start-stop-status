@@ -10,12 +10,13 @@ case $1 in
 	stop)
 		### Stop this package.
 		kill `ps -u plex -ef | grep flaccue | grep -v grep | awk '{print $2}'`
+        umount /flaccue
 		exit 0
 	;;
 	status)
 		### Check package alive.
 		### Check that we have passthrough for /flaccue.
-		if [ -h "/flaccue/sys" ]; then
+		if [ -e "/flaccue/sys" ]; then
 			exit 0
 		else
 			exit 3
