@@ -44,7 +44,14 @@ sudo pkgscripts/PkgCreate.py -S -c FLACCue
 Note that the python script is called "FLACCue" in this package instead of
 flaccue.py. The files are the same other than the name. I also installed
 FFMPEG and Python3 through the Package Center--they are needed for the code
-to run.
+to run. For newer Synology installations, FFMPEG seems to be pre-installed.
+I did have to install pip and a few Python libraries:
+sudo -i
+curl -k https://bootstrap.pypa.io/get-pip.py | python3
+cd /volume1/@appstore/py3k/usr/local/bin
+./pip install ffmpeg-python
+./pip install mutagen
+./pip install numpy
 
 I've also included an unsigned spk file you can install directly at your own
 risk in the synology_package directory.
