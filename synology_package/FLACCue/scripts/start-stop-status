@@ -4,6 +4,8 @@ case $1 in
 	start)
 		### Start this package.
 		### Requests to /flaccue are mirrored to /
+		export LANG='en_US.UTF-8'
+		export LC_ALL='en_US.UTF-8'
 		sudo --user=plex nohup FLACCue / /flaccue/ &
 		exit 0
 	;;
