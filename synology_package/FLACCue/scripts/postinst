@@ -5,8 +5,7 @@
 ### ex. create database, create symbolic link...
 
 mkdir /flaccue
-chown plex:users /flaccue
+chown flaccue:flaccue /flaccue
 chmod a+rwX /flaccue
-ln -sf $SYNOPKG_PKGDEST/usr/bin/FLACCue /usr/bin/
 
 exit 0

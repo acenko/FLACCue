@@ -6,7 +6,7 @@ case $1 in
 		### Requests to /flaccue are mirrored to /
 		export LANG='en_US.UTF-8'
 		export LC_ALL='en_US.UTF-8'
-		sudo --user=plex nohup FLACCue / /flaccue/ &
+		nohup $SYNOPKG_PKGDEST/usr/bin/FLACCue / /flaccue/ &
 		exit 0
 	;;
 	stop)

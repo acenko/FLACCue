@@ -4,7 +4,6 @@
 ### Actions after package uninstalled.
 ### ex. remove garbage files.
 
-rm -f /usr/bin/FLACCue
 rmdir /flaccue
 
 exit 0
