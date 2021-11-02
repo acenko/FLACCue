@@ -625,6 +625,7 @@ class FLACCue(fuse.LoggingMixIn, fuse.Operations):
                                     # Just delete the audio data.
                                     open_handles = len(self._open_subtracks[raw_path]['Positions'])
                                     del self._open_subtracks[raw_path]['Audio']
+                                    self._open_subtracks[raw_path]['Extra Handles'] = []
                                 else:
                                     open_handles = 0
                                     del self._open_subtracks[raw_path]
