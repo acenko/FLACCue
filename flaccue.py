@@ -540,9 +540,9 @@ class FLACCue(fuse.LoggingMixIn, fuse.Operations):
             else:
                 end_time = end_split[0]*60 + end_split[1] + end_split[2]/75
 
+            # Hold a file handle for the actual file.
+            fd = os.open(path, flags, *args, **pargs)
             with self.rwlock:
-                # Hold a file handle for the actual file.
-                fd = os.open(path, flags, *args, **pargs)
                 # If we've already processed this file and still have it in memory.
                 if(raw_path in self._open_subtracks):
                     if('Audio' in self._open_subtracks[raw_path]):
@@ -602,40 +602,38 @@ class FLACCue(fuse.LoggingMixIn, fuse.Operations):
                 # normal file.
                 audio = numpy.frombuffer(data, dtype=numpy.uint8)
 
-                # Keep a copy of the data in memory.
-                self._open_subtracks[raw_path]['Last Access'] = time.time()
-                self._open_subtracks[raw_path]['Audio'] = audio
+                with(self.rwlock):
+                    # Keep a copy of the data in memory.
+                    self._open_subtracks[raw_path]['Last Access'] = time.time()
+                    self._open_subtracks[raw_path]['Audio'] = audio
 
                 # Define a function that will clean up the memory use once it hasn't been
                 # used for a while.
                 def cleanup():
-                    with(self.rwlock):
-                        last_access = self._open_subtracks[raw_path]['Last Access']
                     # Wait until there has been no access to the data for 60 seconds.
-                    while(time.time() - last_access < 60):
+                    while(True):
                         with(self.rwlock):
-                            last_access = self._open_subtracks[raw_path]['Last Access']
+                            # Do this all within the same lock to avoid potential changes
+                            # in between the check and deletion.
+                            if(time.time() - self._open_subtracks[raw_path]['Last Access'] > 60):
+                                # Delete the audio entry. This removes references to the data which
+                                # allows garbage collection to clean up when appropriate.
+                                # Always clean up any extra handles. Do so outside the lock.
+                                extra_handles = self._open_subtracks[raw_path].pop('Extra Handles')
+                                if(len(self._open_subtracks[raw_path]['Positions']) > 0):
+                                    # Still have open file handles.
+                                    # Just delete the audio data.
+                                    open_handles = len(self._open_subtracks[raw_path]['Positions'])
+                                    del self._open_subtracks[raw_path]['Audio']
+                                else:
+                                    open_handles = 0
+                                    del self._open_subtracks[raw_path]
+                                break
                         # Check every 5 seconds.
                         time.sleep(5)
-                    # Delete the audio entry. This removes references to the data which
-                    # allows garbage collection to clean up when appropriate.
-                    with(self.rwlock):
-                        while(True):
-                            try:
-                                os.close(self._open_subtracks[raw_path]['Extra Handles'].pop())
-                            except IndexError:
-                                # Empty list.
-                                break
-                            except Exception:
-                                pass
-                        if(len(self._open_subtracks[raw_path]['Positions']) > 0):
-                            # Still have open file handles.
-                            # Just delete the audio data.
-                            open_handles = len(self._open_subtracks[raw_path]['Positions'])
-                            del self._open_subtracks[raw_path]['Audio']
-                        else:
-                            open_handles = 0
-                            del self._open_subtracks[raw_path]
+                    # Clean up the extra handles here. No need to do so while locked.
+                    for fd in extra_handles:
+                        os.close(fd)
                     if(self._verbose):
                         print(f'{raw_path} closed. {open_handles} file handles open.', flush=True)
 
@@ -645,13 +643,15 @@ class FLACCue(fuse.LoggingMixIn, fuse.Operations):
                 # Return the file handle.
                 return fd
             else:
+                # Wait for the previous open call to open the file.
                 while(True):
                     with(self.rwlock):
+                        # Ensure we keep the last access time fresh so we don't
+                        # close the file before this is done.
+                        self._open_subtracks[raw_path]['Last Access'] = time.time()
                         if(self._open_subtracks[raw_path]['Audio'] is not None):
                             break
                     time.sleep(0.1)
-                # Update the stored info.
-                self._open_subtracks[raw_path]['Last Access'] = time.time()
                 # Return the file handle.
                 return fd
         else:
@@ -659,35 +659,40 @@ class FLACCue(fuse.LoggingMixIn, fuse.Operations):
             # This allows FLAC files to be read with a FLACCue path.
             # Note that you do not want to run this as root as this will
             # give anyone read access to any file.
-            with self.rwlock:
-                return os.open(path, flags, *args, **pargs)
+            return os.open(path, flags, *args, **pargs)
 
     def read(self, path, size, offset, fh):
         """Read data from the path."""
         with self.rwlock:
             if(path in self._open_subtracks):
+                # Update the last accessed time.
+                self._open_subtracks[path]['Last Access'] = time.time()
                 # Get the info for processed files.
                 info = self._open_subtracks[path]
             else:
-                # For all other files, just access it normally.
-                os.lseek(fh, offset, 0)
-                return os.read(fh, size)
-        if('Audio' not in info):
-            # Reload the data if needed.
-            self.open(path, os.O_RDONLY)
+                info = None
+        if(info is None):
+            # For all non-FLACCue files, just access it normally.
+            os.lseek(fh, offset, 0)
+            return os.read(fh, size)
+        elif('Audio' not in info):
+            # Start a thread to reload the data if needed.
+            thread = threading.Thread(target=self.open,
+                                      args=(path, os.O_RDONLY,))
+            thread.start()
         # Ensure the data is processed and available.
         while(True):
             with(self.rwlock):
+                # Ensure we keep the last access time fresh so we don't
+                # close the file before this is done.
+                self._open_subtracks[path]['Last Access'] = time.time()
                 if(self._open_subtracks[path]['Audio'] is not None):
+                    # Store the requested offset.
+                    self._open_subtracks[path]['Positions'][fh] = offset
+                    # Store the data.
+                    audio = self._open_subtracks[path]['Audio']
                     break
             time.sleep(0.1)
-        with(self.rwlock):
-            # Update the last accessed time.
-            self._open_subtracks[path]['Last Access'] = time.time()
-            # Store the requested offset.
-            self._open_subtracks[path]['Positions'][fh] = offset
-            # Store the data.
-            audio = self._open_subtracks[path]['Audio']
         # Return the data requested.
         if(offset > len(audio)):
             # If we're looking near the end of the file,
@@ -728,10 +733,8 @@ class FLACCue(fuse.LoggingMixIn, fuse.Operations):
             if(path in self._open_subtracks):
                 # Delete the file handle from the stored list.
                 del self._open_subtracks[path]['Positions'][fh]
-                # Update the last access time.
-                self._open_subtracks[path]['Last Access'] = time.time()
-            # Close the OS reference to the file.
-            return os.close(fh)
+        # Close the OS reference to the file.
+        return os.close(fh)
 
     def statfs(self, path):
         """Get the dictionary of filesystem stats."""
