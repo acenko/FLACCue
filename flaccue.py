@@ -262,7 +262,7 @@ class FLACCue(fuse.LoggingMixIn, fuse.Operations):
             self._cue_cache = {}
             self._track_cache = {}
 
-    def __call__(self, op, path, *args):
+    def __call__(self, op, path, *args, **pargs):
         """Transfer any call to this filesystem to include the root path."""
         return super(FLACCue, self).__call__(op, os.path.join(self.root, path), *args)
 
@@ -462,7 +462,7 @@ class FLACCue(fuse.LoggingMixIn, fuse.Operations):
                     print(f'{raw_path} -> {path}', flush=True)
         return path, meta
 
-    def getattr(self, path, fh=None):
+    def getattr(self, path, *args, **pargs):
         """Get the attributes of the file path.
 
         If it's one of the FLACCue paths, we need to adjust the file size to be
@@ -676,7 +676,7 @@ class FLACCue(fuse.LoggingMixIn, fuse.Operations):
             # give anyone read access to any file.
             return os.open(path, flags, *args, **pargs)
 
-    def read(self, path, size, offset, fh):
+    def read(self, path, size, offset, fh, *args, **pargs):
         """Read data from the path."""
         with self.rwlock:
             if(path in self._open_subtracks):
@@ -717,7 +717,7 @@ class FLACCue(fuse.LoggingMixIn, fuse.Operations):
                 offset = len(audio) - (reported_size - offset)
         return audio[offset:offset+size].tobytes()
 
-    def readdir(self, path, fh):
+    def readdir(self, path, fh, *args, **pargs):
         """Read the contents of the directory."""
         path = self.clean_path(path)
         files = os.listdir(path)
@@ -740,9 +740,8 @@ class FLACCue(fuse.LoggingMixIn, fuse.Operations):
 
         return ['.', '..'] + files
 
-    def release(self, path, fh):
+    def release(self, path, fh, *args, **pargs):
         """Release the file handle."""
-        path, meta = self.find_cue_path(path)
         with(self.rwlock):
             # If we're closing a FLACCue file...
             if(path in self._open_subtracks):
@@ -751,7 +750,7 @@ class FLACCue(fuse.LoggingMixIn, fuse.Operations):
         # Close the OS reference to the file.
         return os.close(fh)
 
-    def statfs(self, path):
+    def statfs(self, path, *args, **pargs):
         """Get the dictionary of filesystem stats."""
         path, meta = self.find_cue_path(path)
         path = self.clean_path(path)
