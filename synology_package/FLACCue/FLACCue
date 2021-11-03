@@ -292,6 +292,7 @@ class FLACCue(fuse.LoggingMixIn, fuse.Operations):
             List of files referenced by the cue file. These are
             intended for removal from the directory listing.
         """
+        unknown_tracks = 0
         try:
             if(cue_file in self._cue_cache):
                 return self._cue_cache[cue_file]
@@ -305,8 +306,14 @@ class FLACCue(fuse.LoggingMixIn, fuse.Operations):
         # Get all files mentioned in the Cue sheet.
         cuefiles = info['Files']
         # Get the album information.
-        album = info['TITLE']
-        album_artist = info['PERFORMER']
+        try:
+            album = info['TITLE']
+        except KeyError:
+            album = 'Unknown'
+        try:
+            album_artist = info['PERFORMER']
+        except KeyError:
+            album_artist = ''
         if(album_artist == ''):
             # No listed album artist. Use the artist from the first
             # track of the first file.
@@ -345,7 +352,11 @@ class FLACCue(fuse.LoggingMixIn, fuse.Operations):
             end_time = '00:00:00'
             # Handle each track.
             for track in track_info:
-                title = track_info[track]['TITLE']
+                try:
+                    title = track_info[track]['TITLE']
+                except KeyError:
+                    unknown_tracks += 1
+                    title = f'Unknown {unknown_tracks}'
                 try:
                     artist = track_info[track]['PERFORMER']
                 except KeyError:
