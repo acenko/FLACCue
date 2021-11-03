@@ -634,7 +634,10 @@ class FLACCue(fuse.LoggingMixIn, fuse.Operations):
                         time.sleep(5)
                     # Clean up the extra handles here. No need to do so while locked.
                     for fd in extra_handles:
-                        os.close(fd)
+                        try:
+                            os.close(fd)
+                        except Exception:
+                            pass
                     if(self._verbose):
                         print(f'{raw_path} closed. {open_handles} file handles open.', flush=True)
 
