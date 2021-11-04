@@ -226,7 +226,7 @@ def read_cue(file, verbose=False):
 class FLACCue(fuse.LoggingMixIn, fuse.Operations):
     """FUSE filesystem to parse .cue files into separate tracks."""
 
-    def __init__(self, root, mount, format='flac', use_tempfile=True, cache_cue=True, verbose=False):
+    def __init__(self, root, mount, format='wav', use_tempfile=False, cache_cue=True, verbose=False):
         """Initialize the filesystem for the root path.
 
         Parameters
@@ -556,119 +556,100 @@ class FLACCue(fuse.LoggingMixIn, fuse.Operations):
             with self.rwlock:
                 # If we've already processed this file and still have it in memory.
                 if(raw_path in self._open_subtracks):
-                    if('Audio' in self._open_subtracks[raw_path]):
-                        if(self._open_subtracks[raw_path]['Audio'] is not None):
-                            # Update the stored info.
-                            self._open_subtracks[raw_path]['Last Access'] = time.time()
-                            self._open_subtracks[raw_path]['Positions'][fd] = 0
-                            # Return the file handle.
-                            return fd
-                        else:
-                            # We're still processing this track. Wait for it to finish.
-                            process = False
-                            self._open_subtracks[raw_path]['Positions'][fd] = 0
+                    if(self._open_subtracks[raw_path]['Audio'] is not None):
+                        # Update the stored info.
+                        self._open_subtracks[raw_path]['Last Access'] = time.time()
+                        self._open_subtracks[raw_path]['Positions'][fd] = 0
+                        # Return the file handle.
+                        return fd
                     else:
-                        # Reloading the data.
-                        process = True
-                        self._open_subtracks[raw_path]['Audio'] = None
-                        self._open_subtracks[raw_path]['Extra Handles'].append(fd)
+                        # We're still processing this track. Wait for it to finish.
+                        process = False
+                        self._open_subtracks[raw_path]['Positions'][fd] = 0
                 else:
                     # This is a new track to process.
                     process = True
                     self._open_subtracks[raw_path] = {'Positions': {fd: 0},
                                                       'Last Access': time.time(),
                                                       'Audio': None,
-                                                      'Extra Handles': [],  # Store extra handles for auto reopens.
                                                       }
             if(process):
-                if(self._verbose):
-                    print(f'Loading {raw_path}...', flush=True)
-                # Otherwise, we have to process the FLAC file to extract the track.
-                # Open the file with FFMPEG.
-                track = ffmpeg.input(path)
-                if(self._use_tempfile):
-                    # Use a tempfile so ffmpeg can update metadata after finishing
-                    # compression.
-                    with tempfile.TemporaryDirectory() as temp:
-                        filename = os.path.join(temp, f'temp.{self._format}')
-                        # Set the output to convert to a temporary file.
+                def load():
+                    if(self._verbose):
+                        print(f'Loading {raw_path}...', flush=True)
+                    # Otherwise, we have to process the FLAC file to extract the track.
+                    # Open the file with FFMPEG.
+                    track = ffmpeg.input(path)
+                    if(self._use_tempfile):
+                        # Use a tempfile so ffmpeg can update metadata after finishing
+                        # compression.
+                        with tempfile.TemporaryDirectory() as temp:
+                            filename = os.path.join(temp, f'temp.{self._format}')
+                            # Set the output to convert to a temporary file.
+                            # Trim it to start at start_time and end at end_time.
+                            try:
+                                output = track.output(filename, ss=start_time, to=end_time,
+                                                      format=self._format, compression_level=0,
+                                                      **meta)
+                            except TypeError:
+                                # compression_level not supported for the format?
+                                output = track.output(filename, ss=start_time, to=end_time,
+                                                      format=self._format, **meta)
+                            # Do the conversion.
+                            output.run()
+                            # Read the temporary file in as a bytes buffer.
+                            with open(filename, 'rb') as f:
+                                data = f.read()
+                    else:
+                        # Set the output to convert to a wave file and pipe to stdout.
                         # Trim it to start at start_time and end at end_time.
-                        output = track.output(filename, ss=start_time, to=end_time,
-                                              format=self._format, **meta)
-                        # Do the conversion.
-                        output.run()
-                        # Read the temporary file in as a bytes buffer.
-                        with open(filename, 'rb') as f:
-                            data = f.read()
-                else:
-                    # Set the output to convert to a wave file and pipe to stdout.
-                    # Trim it to start at start_time and end at end_time.
-                    output = track.output('pipe:', ss=start_time, to=end_time,
-                                          format=self._format, **meta)
-                    # Do the conversion. Capture stdout into a buffer.
-                    data, _ = output.run(capture_stdout=True)
+                        try:
+                            output = track.output('pipe:', ss=start_time, to=end_time,
+                                                  format=self._format, compression_level=0,
+                                                  **meta)
+                        except TypeError:
+                            # compression_level not supported for the format?
+                            output = track.output('pipe:', ss=start_time, to=end_time,
+                                                  format=self._format, **meta)
+                        # Do the conversion. Capture stdout into a buffer.
+                        data, _ = output.run(capture_stdout=True)
+                        # Convert the buffer to a numpy array. Use bytes to access just like a
+                        # normal file.
                     # Convert the buffer to a numpy array. Use bytes to access just like a
                     # normal file.
-                # Convert the buffer to a numpy array. Use bytes to access just like a
-                # normal file.
-                audio = numpy.frombuffer(data, dtype=numpy.uint8)
+                    audio = numpy.frombuffer(data, dtype=numpy.uint8)
 
-                with(self.rwlock):
-                    # Keep a copy of the data in memory.
-                    self._open_subtracks[raw_path]['Last Access'] = time.time()
-                    self._open_subtracks[raw_path]['Audio'] = audio
+                    with(self.rwlock):
+                        # Keep a copy of the data in memory.
+                        self._open_subtracks[raw_path]['Last Access'] = time.time()
+                        self._open_subtracks[raw_path]['Audio'] = audio
 
-                # Define a function that will clean up the memory use once it hasn't been
-                # used for a while.
-                def cleanup():
-                    # Wait until there has been no access to the data for 60 seconds.
-                    while(True):
-                        with(self.rwlock):
-                            # Do this all within the same lock to avoid potential changes
-                            # in between the check and deletion.
-                            if(time.time() - self._open_subtracks[raw_path]['Last Access'] > 60):
-                                # Delete the audio entry. This removes references to the data which
-                                # allows garbage collection to clean up when appropriate.
-                                # Always clean up any extra handles. Do so outside the lock.
-                                extra_handles = self._open_subtracks[raw_path].pop('Extra Handles')
-                                if(len(self._open_subtracks[raw_path]['Positions']) > 0):
-                                    # Still have open file handles.
-                                    # Just delete the audio data.
-                                    open_handles = len(self._open_subtracks[raw_path]['Positions'])
-                                    del self._open_subtracks[raw_path]['Audio']
-                                    self._open_subtracks[raw_path]['Extra Handles'] = []
-                                else:
-                                    open_handles = 0
+                    # Define a function that will clean up the memory use once it hasn't been
+                    # used for a while.
+                    def cleanup():
+                        # Wait until there has been no access to the data for 60 seconds.
+                        while(True):
+                            with(self.rwlock):
+                                # Do this all within the same lock to avoid potential changes
+                                # in between the check and deletion.
+                                if(time.time() - self._open_subtracks[raw_path]['Last Access'] > 60 and
+                                   len(self._open_subtracks[raw_path]['Positions']) == 0):
                                     del self._open_subtracks[raw_path]
-                                break
-                        # Check every 5 seconds.
-                        time.sleep(5)
-                    # Clean up the extra handles here. No need to do so while locked.
-                    for fd in extra_handles:
-                        try:
-                            os.close(fd)
-                        except Exception:
-                            pass
-                    if(self._verbose):
-                        print(f'{raw_path} closed. {open_handles} file handles open.', flush=True)
+                                    break
+                            # Check every 5 seconds.
+                            time.sleep(5)
+                        if(self._verbose):
+                            print(f'{raw_path} closed.', flush=True)
+
+                    # Start a thread running that function.
+                    thread = threading.Thread(target=cleanup)
+                    thread.start()
 
                 # Start a thread running that function.
-                thread = threading.Thread(target=cleanup)
+                thread = threading.Thread(target=load)
                 thread.start()
-                # Return the file handle.
-                return fd
-            else:
-                # Wait for the previous open call to open the file.
-                while(True):
-                    with(self.rwlock):
-                        # Ensure we keep the last access time fresh so we don't
-                        # close the file before this is done.
-                        self._open_subtracks[raw_path]['Last Access'] = time.time()
-                        if(self._open_subtracks[raw_path]['Audio'] is not None):
-                            break
-                    time.sleep(0.1)
-                # Return the file handle.
-                return fd
+            # Return the file handle.
+            return fd
         else:
             # With any other file, just pass it along normally.
             # This allows FLAC files to be read with a FLACCue path.
@@ -680,31 +661,22 @@ class FLACCue(fuse.LoggingMixIn, fuse.Operations):
         """Read data from the path."""
         with self.rwlock:
             if(path in self._open_subtracks):
+                real = False
                 # Update the last accessed time.
                 self._open_subtracks[path]['Last Access'] = time.time()
-                # Get the info for processed files.
-                info = self._open_subtracks[path]
+                # Store the requested offset.
+                self._open_subtracks[path]['Positions'][fh] = offset
             else:
-                info = None
-        if(info is None):
+                real = True
+        if(real):
             # For all non-FLACCue files, just access it normally.
             os.lseek(fh, offset, 0)
             return os.read(fh, size)
-        elif('Audio' not in info):
-            # Start a thread to reload the data if needed.
-            thread = threading.Thread(target=self.open,
-                                      args=(path, os.O_RDONLY,))
-            thread.start()
-        # Ensure the data is processed and available.
+        # Wait for the file to finish opening.
         while(True):
             with(self.rwlock):
-                # Ensure we keep the last access time fresh so we don't
-                # close the file before this is done.
                 self._open_subtracks[path]['Last Access'] = time.time()
                 if(self._open_subtracks[path]['Audio'] is not None):
-                    # Store the requested offset.
-                    self._open_subtracks[path]['Positions'][fh] = offset
-                    # Store the data.
                     audio = self._open_subtracks[path]['Audio']
                     break
             time.sleep(0.1)
@@ -767,7 +739,7 @@ if __name__ == '__main__':
     parser.add_argument('mount', help='The location to mount the FUSE filesystem.')
     parser.add_argument('-f', '--format',
                         dest='format', type=str,
-                        default='flac',
+                        default='wav',
                         help='The audio file format to use for the split files.')
     parser.add_argument('-v', '--verbose',
                         dest='verbose', action='store_true',
