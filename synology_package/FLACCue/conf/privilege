@@ -1,0 +1,19 @@
+{
+  "defaults":{
+    "run-as": "package"
+  },
+  "username": "flaccue",
+  "groupname": "flaccue",
+  "executable": [{
+    "relpath": "/usr/bin/FLACCue",
+    "run-as": "package"
+  }],
+  "ctrl-script": [{
+    "action": "postinst",
+    "run-as": "root"
+  },
+  {
+    "action": "postuninst",
+    "run-as": "root"
+  }]
+}

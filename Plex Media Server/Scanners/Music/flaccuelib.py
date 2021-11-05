@@ -88,7 +88,7 @@ def FLACCueParse(path, files, mediaList, subdirs, language=None, root=None):
                log(track_object)
                # Add the track object to the output list.
                mediaList.append(track_object)
-               
+
                # Split into tracks.
                track_info = cuefiles[file]['Tracks']
                start_time = '00:00:00'
@@ -122,10 +122,7 @@ def FLACCueParse(path, files, mediaList, subdirs, language=None, root=None):
                   # FUSE (Filesystem in Userspace) code.
                   # This will be something like:
                   # /flaccue/Music/Artist/Album/Artist - Album Disc 1.flaccuesplit.10:25:17.12:55:20.flac
-                  parsed_filename = '/flaccue'+full_file
-                  extension = os.path.splitext(parsed_filename)[1]
-                  parsed_filename = parsed_filename.replace(
-                        extension, '.flaccuesplit.{0}.{1}{2}'.format(start_time, end_time, extension))
+                  parsed_filename = '/flaccue'+full_file+'.flaccuesplit.{}.{}.wav'.format(start_time, end_time)
                   track_object.parts.append(parsed_filename)
                   log(track_object)
                   # Add the track to the returned object list.

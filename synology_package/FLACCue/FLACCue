@@ -430,7 +430,7 @@ class FLACCue(fuse.LoggingMixIn, fuse.Operations):
             Metadata associated with the input path. Only provided
             when the path is created from a cue file.
         """
-        meta = None
+        meta = {}
         if('.flaccuesplit.' not in path and not os.path.exists(path)):
             try:
                 path, meta = self._track_cache[path]
