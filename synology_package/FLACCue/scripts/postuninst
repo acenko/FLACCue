@@ -4,6 +4,4 @@
 ### Actions after package uninstalled.
 ### ex. remove garbage files.
 
-rmdir /flaccue
-
 exit 0

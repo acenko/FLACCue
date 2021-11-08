@@ -4,11 +4,4 @@
 ### Actions after package installed.
 ### ex. create database, create symbolic link...
 
-curl -k https://bootstrap.pypa.io/get-pip.py | python3
-pip install ffmpeg-python mutagen numpy
-
-mkdir /flaccue
-chown flaccue:flaccue /flaccue
-chmod a+rwX /flaccue
-
 exit 0

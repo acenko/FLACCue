@@ -100,3 +100,19 @@ cd /volume1/@appstore/py3k/usr/local/bin
 
 I've also included an unsigned spk file you can install directly at your own
 risk in the synology_package directory.
+
+Synology no longer allows root access for a package that isn't signed by
+Synology. As such, for installing the spk, you'll also need to log in as
+root and run:
+
+curl -k https://bootstrap.pypa.io/get-pip.py | python3
+pip install ffmpeg-python mutagen numpy
+
+mkdir /flaccue
+chown flaccue:flaccue /flaccue
+chmod a+rwX /flaccue
+
+When removing the package, you may wish to run:
+rmdir /flaccue
+
+
