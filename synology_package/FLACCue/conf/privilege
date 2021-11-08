@@ -1,11 +1,7 @@
 {
-  "defaults":{
-    "run-as": "package"
-  },
-  "username": "flaccue",
-  "groupname": "flaccue",
-  "executable": [{
-    "relpath": "usr/bin/FLACCue",
-    "run-as": "package"
-  }]
+    "defaults":{
+        "run-as": "package"
+    },
+    "username": "flaccue",
+    "groupname": "flaccue"
 }

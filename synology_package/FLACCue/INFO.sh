@@ -10,6 +10,6 @@ maintainer="Andrew Cenko"
 maintainer_url="https://github.com/acenko/FLACCue"
 arch="noarch"
 description="Run a Fuse server to trim FLAC files according to Cue."
-install_dep_packages="ffmpeg:python3"
+install_dep_packages="ffmpeg"
 [ "$(caller)" != "0 NULL" ] && return 0
 pkg_dump_info

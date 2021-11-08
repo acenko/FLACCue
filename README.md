@@ -63,16 +63,8 @@ information (1/75th of a second) and this is the format FLACCue understands.
 
 You do not want to run this script as root as this will give anyone read
 access to any file. Use something like this instead:
-sudo --user=plex nohup flaccue.py / /flaccue/ &
+sudo --user=flaccue nohup flaccue.py / /flaccue/ &
 
-
-I'm currently still working on the details below, as DSM 7 has complicated
-compilation of the Synology package for me. I've updated the scripts
-according to the documentation I've found for DSM 7 but am still working
-on compiling the package into an spk file (previously, I could do this
-directly on the NAS but now need to bring up a separate environment). I
-currently manually start the file on my Synology NAS after reboots, which
-has worked reliably, but hopefully I'll get time to finish this soon.
 
 As my Plex server runs on a Synology webserver, I've also created a Synology
 package to run the FLACCue script automatically. The source for creating this
@@ -89,9 +81,8 @@ Also note that the python script is called "FLACCue" in this package instead
 of flaccue.py. The files are the same other than the name.
 
 I've included an unsigned spk file you can install directly at your own
-risk in the synology_package directory.
-FFMPEG and Python3 should get installed by the spk--they are needed for the
-code to run.
+risk in the synology_package directory. FFMPEG will need to be installed
+(and the spk should warn you of this if it's not already there).
 
 Synology no longer allows root access for a package that isn't signed by
 Synology. As such, for installing the spk, you'll also need to log in as
@@ -101,4 +92,11 @@ sudo -i
 
 curl -k https://bootstrap.pypa.io/get-pip.py | python3
 pip install ffmpeg-python mutagen numpy
+
+mkdir /flaccue
+chown flaccue:flaccue /flaccue
 ```
+You'll need to do this after the package is installed and before it will
+successfully load. You'll also need to provide permissions for the flaccue
+user to access any media files you want it to be able to. Read-only access
+is likely best.
