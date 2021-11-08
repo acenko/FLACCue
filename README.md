@@ -82,37 +82,23 @@ https://github.com/SynologyOpenSource/pkgscripts-ng
 
 After creating the toolkit, you put the FLACCue folder in the "toolkit/source"
 directory and run this command from the "toolkit/" directory:
-sudo pkgscripts/PkgCreate.py -S -c FLACCue
+sudo pkgscripts/PkgCreate.py -v 7.0 -c FLACCue
 
-Note that the python script is called "FLACCue" in this package instead of
-flaccue.py. The files are the same other than the name. I also installed
-FFMPEG and Python3 through the Package Center--they are needed for the code
-to run. For newer Synology installations, FFMPEG seems to be pre-installed.
-I did have to install pip and a few Python libraries:
-```
-sudo -i
-curl -k https://bootstrap.pypa.io/get-pip.py | python3
-cd /volume1/@appstore/py3k/usr/local/bin
-./pip install ffmpeg-python
-./pip install mutagen
-./pip install numpy
-```
+Note that you may need to set permissions on INFO.sh to be executable.
+Also note that the python script is called "FLACCue" in this package instead
+of flaccue.py. The files are the same other than the name.
 
-I've also included an unsigned spk file you can install directly at your own
+I've included an unsigned spk file you can install directly at your own
 risk in the synology_package directory.
+FFMPEG and Python3 should get installed by the spk--they are needed for the
+code to run.
 
 Synology no longer allows root access for a package that isn't signed by
 Synology. As such, for installing the spk, you'll also need to log in as
 root and run:
+```
+sudo -i
 
 curl -k https://bootstrap.pypa.io/get-pip.py | python3
 pip install ffmpeg-python mutagen numpy
-
-mkdir /flaccue
-chown flaccue:flaccue /flaccue
-chmod a+rwX /flaccue
-
-When removing the package, you may wish to run:
-rmdir /flaccue
-
-
+```

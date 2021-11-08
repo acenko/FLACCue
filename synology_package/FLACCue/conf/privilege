@@ -5,7 +5,7 @@
   "username": "flaccue",
   "groupname": "flaccue",
   "executable": [{
-    "relpath": "/usr/bin/FLACCue",
+    "relpath": "usr/bin/FLACCue",
     "run-as": "package"
   }]
 }
