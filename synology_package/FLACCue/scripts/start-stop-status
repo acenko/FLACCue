@@ -4,6 +4,10 @@ case $1 in
 	start)
 		### Start this package.
 		### Requests to /flaccue are mirrored to /
+		### First ensure we are ready to start a FUSE filesystem.
+		### If not, wait 20 seconds before continuing--this usually
+		### is just the Synology system finishing booting.
+		if [ ! -w /dev/fuse ] || [ ! -c /dev/fuse ]; then sleep 20; fi;
 		export LANG='en_US.UTF-8'
 		export LC_ALL='en_US.UTF-8'
 		nohup $SYNOPKG_PKGDEST/usr/bin/FLACCue / /flaccue/ &
@@ -11,8 +15,9 @@ case $1 in
 	;;
 	stop)
 		### Stop this package.
-		kill `ps -u plex -ef | grep flaccue | grep -v grep | awk '{print $2}'`
-        umount /flaccue
+		### You may need to manually unmount /flaccue if unable to restart.
+		process=`ps -u flaccue -f | grep /usr/bin/FLACCue | grep -v grep | awk '{print $2}'`
+        if [ "$process" ]; then kill $process; fi;
 		exit 0
 	;;
 	status)
@@ -25,7 +30,7 @@ case $1 in
 		fi
 	;;
 	killall)
-        ;;
+		;;
 	log)
 		exit 0
 	;;
