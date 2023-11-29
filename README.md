@@ -100,3 +100,12 @@ You'll need to do this after the package is installed and before it will
 successfully load. You'll also need to provide permissions for the flaccue
 user to access any media files you want it to be able to. Read-only access
 is likely best.
+
+Note that on more recent versions of the Synology OS, you may need to perform
+the above steps after upgrading the OS. You will then either need to manually
+start the FLACCue package or restart the server.
+
+You may also need to modify the pip command to instead be:
+```
+python -m pip install --upgrade --no-cache-dir --use-deprecated=legacy-resolver ffmpeg-python mutagen numpy
+```
