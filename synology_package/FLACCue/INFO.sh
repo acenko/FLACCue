@@ -3,7 +3,7 @@
 source /pkgscripts/include/pkg_util.sh
 
 package="FLACCue"
-version="3.0.0000"
+version="3.0.0001"
 os_min_ver="7.0-40000"
 displayname="FLACCue"
 maintainer="Andrew Cenko"

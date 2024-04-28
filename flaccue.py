@@ -377,7 +377,7 @@ class FLACCue(fuse.LoggingMixIn, fuse.Operations):
                     end_time = '-1'
                 track_file = f'{artist} - {album} - {disc}{track:02d} {title}.{self._format}'
                 track_file = track_file.replace('/', ' ')
-                to_add[track_file] = self.mount + full_file + f'.flaccuesplit.{start_time}.{end_time}.{self._format}'
+                to_add[track_file] = full_file + f'.flaccuesplit.{start_time}.{end_time}.{self._format}'
                 # A bit of a hack needed for ffmpeg interfacing.
                 meta[track_file] = {'metadata:g:1': f'artist={artist}',
                                     'metadata:g:2': f'album={album}',
@@ -404,9 +404,9 @@ class FLACCue(fuse.LoggingMixIn, fuse.Operations):
         """
         if('.flaccuesplit.' in path):
             path, flaccue_details = path.split('.flaccuesplit.')
-        if(path.startswith(self.mount)):
-            # Strip off the mount point.
-            path = path[len(self.mount):]
+        if(not path.startswith(self.root)):
+            # Add the root details.
+            path = os.path.join(self.root, os.path.splitdrive(path)[1][1:])
         return path
 
     def find_cue_path(self, path, verbose=False):

@@ -72,11 +72,17 @@ package can be found in the synology_package directory. You can compile this
 with pkgscripts from Synology:
 https://github.com/SynologyOpenSource/pkgscripts-ng
 
-After creating the toolkit, you put the FLACCue folder in the "toolkit/source"
-directory and run this command from the "toolkit/" directory:
-sudo pkgscripts/PkgCreate.py -v 7.0 -c FLACCue
+After installing the toolkit and checking out branch DSM7.2 (or similar),
+you put the FLACCue folder in the "toolkit/source" directory and run
+this command from the "toolkit/" directory (you may need to change the
+processor family or DSM version appropriately):
+sudo pkgscripts-ng/EnvDeploy -v 7.2 -p apollolake
+sudo pkgscripts-ng/PkgCreate.py -v 7.2 -p apollolake -c FLACCue
 
-Note that you may need to set permissions on INFO.sh to be executable.
+Note that this does not appear to work directly on Synology boxes and so you
+may need to have a separate Linux system (VM is fine) to build this.
+
+Note that you may also need to set permissions on INFO.sh to be executable.
 Also note that the python script is called "FLACCue" in this package instead
 of flaccue.py. The files are the same other than the name.
 
